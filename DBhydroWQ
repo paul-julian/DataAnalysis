@@ -1,0 +1,28 @@
+## Functions associated with downloading data from The South Florida Water Management Districts Online environmental 
+# database (DBHydro) directly into R. 
+
+##Download Water Quality Data. This function will download and read into R water quality data housed in DBHydro. 
+##This function does not specify collection method therefore water quality data will include grab and autosampler data where collected.
+#SDATE=as.Date("YYYY-MM-DD")
+#EDATE=as.Date("YYYY-MM-DD")
+#WQ.Station=S12A
+#tests=c(25);# Done by test number (i.e. 25=Total Phosphorus).
+SFWMD.DBHYDRO.Data.WQ=function(SDATE,EDATE,WQ.Station,tests){
+  SDATE=paste(format(SDATE,"%d"),toupper(format(SDATE,"%b")),format(SDATE,"%Y"),sep="-");#"%d-%b-%Y
+  EDATE=paste(format(EDATE,"%d"),toupper(format(EDATE,"%b")),format(EDATE,"%Y"),sep="-");#"%d-%b-%Y
+  WQ.Station=paste("'",WQ.Station,"'",collapse=",",sep="")
+  tests=paste("(",paste(tests,collapse=",",sep=""),")",sep="")
+  WQ.link=paste0("http://my.sfwmd.gov/dbhydroplsql/water_quality_data.report_full?v_where_clause=where+station_id+in+(",WQ.Station,")+and+test_number+in+",tests,"+and+date_collected+>=+'",SDATE,"'+and+date_collected+<+'",EDATE,"'+and+sample_type_new+=+'SAMP'&v_exc_qc=Y&v_exc_flagged=Y&v_target_code=file_csv")
+  REPORT=read.csv(WQ.link);
+  REPORT=subset(REPORT,is.na(Test.Number)==F)
+  REPORT$Collection_Date=as.POSIXct(strptime(REPORT$Collection_Date,"%d-%b-%Y %R"),tz="America/New_York")
+  REPORT$First.Trigger.Date=as.POSIXct(strptime(REPORT$First.Trigger.Date,"%d-%b-%Y %R"),tz="America/New_York")
+  REPORT$Date=as.POSIXct(strptime(REPORT$Collection_Date,"%F"),tz="America/New_York")
+  REPORT$DateTime.EST=REPORT$Collection_Date
+  attr(REPORT$DateTime.EST,"tzone")<-"EST"
+  REPORT$Date.EST=as.POSIXct(strptime(REPORT$DateTime.EST,"%F"),tz="EST")
+  #REPORT$Date.EST=REPORT$Date
+  #attributes(REPORT$Date.EST)$tzone="EST"
+  REPORT$HalfMDL=with(REPORT,ifelse(Value<0,abs(Value)/2,Value))
+  return(REPORT)
+}
